@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - **Submit-Deadline: Di 04.08.2026** (Frist 06.08.; Mi 05 + Do 06 sind Puffer). Läuft ein Block über, fällt zuerst der ArgoCD-Teil (Task 10), **niemals** Tasks 12–13 (Bewerbung).
-- Nutzer ist Docker/K8s-Einsteiger: Konzepte am lebenden System erklären; entscheidende Befehle tippt der Nutzer selbst.
+- Nutzer ist Docker/K8s-Einsteiger. **Arbeitsmodus (Nutzer-Vorgabe vom 27.07.): Der Nutzer führt JEDEN Schritt selbst aus** (UI-Aktionen, Terminal-Befehle, Configs). Claude liefert Schritt-für-Schritt-Anleitung mit Begründung, verifiziert jedes Ergebnis über MCP/SSH/API und stellt nach jedem Block 2–3 Verständnisfragen auf Bewerbungsgespräch-Niveau. Kern-Artefakte schreibt der Nutzer, Claude reviewt; nur Boilerplate (Journal-Format, Commits) macht Claude.
 - Pod stoppen, wenn nicht in Arbeit. `HF_HOME=/workspace/hf` (Volume), damit Modelle den Stop überleben.
 - vLLM-Endpoint ist öffentlich erreichbar → **immer** mit `VLLM_API_KEY` absichern.
 - Jeder Task endet mit Commit + Journal-Eintrag in `docs/journal.md` (gebaut / gelernt / schiefgegangen).
