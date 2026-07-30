@@ -9,6 +9,8 @@ model_list:
       model: hosted_vllm/Qwen/Qwen3-8B       # hosted_vllm/ = route as OpenAI-compatible
       api_base: os.environ/VLLM_API_BASE     # must include the /v1 suffix
       api_key: os.environ/VLLM_API_KEY       # the backend's own key (day-1 lesson)
+      input_cost_per_token: 0.0000001    # $0.10/M tokens — interner Verrechnungspreis
+      output_cost_per_token: 0.00000041  # $0.41/M — aus docs/capacity-model.md (c=8)
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY  # admin key: mints and revokes virtual keys
