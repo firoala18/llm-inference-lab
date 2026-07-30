@@ -1,0 +1,37 @@
+# The gateway stack: LiteLLM proxy + Postgres for virtual keys, budgets, spend.
+# Start:  docker compose up -d      Logs: docker compose logs -f litellm
+# Stop:   docker compose down       (add -v to also wipe the database volume)
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    ports:
+      - "4000:4000"                          # host:container — clients talk to localhost:4000
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro    # :ro = read-only, the container cannot alter our config
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    env_file: .env                           # secrets + pod URL, never committed
+    environment:
+      DATABASE_URL: postgresql://litellm:litellm@db:5432/litellm
+      STORE_MODEL_IN_DB: "True"
+    depends_on:
+      db:
+        condition: service_healthy           # wait for a READY database, not just a started one
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm             # lab-local only; never a real deployment password
+      POSTGRES_DB: litellm
+    volumes:
+      - pgdata:/var/lib/postgresql/data      # named volume → keys survive `compose down`
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata: {}

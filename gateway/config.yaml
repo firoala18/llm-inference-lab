@@ -1,0 +1,18 @@
+# LiteLLM gateway — one OpenAI-compatible front door for all model backends.
+#
+# Values that change per environment (pod URL, secrets) come from .env, not from
+# this file: config in git, environment in .env. `os.environ/NAME` is LiteLLM's
+# indirection syntax — it reads NAME from the container's environment.
+model_list:
+  - model_name: qwen-8b                      # the public alias clients ask for
+    litellm_params:
+      model: hosted_vllm/Qwen/Qwen3-8B       # hosted_vllm/ = route as OpenAI-compatible
+      api_base: os.environ/VLLM_API_BASE     # must include the /v1 suffix
+      api_key: os.environ/VLLM_API_KEY       # the backend's own key (day-1 lesson)
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY  # admin key: mints and revokes virtual keys
+
+litellm_settings:
+  drop_params: true                          # silently drop params vLLM doesn't support
+                                             # instead of failing the request
