@@ -1,0 +1,32 @@
+# Alert rules. Evaluated by Prometheus every 15s; state visible under
+# http://localhost:9090/alerts and on the Grafana dashboard.
+# `for:` = the condition must hold that long before firing (debounce —
+# a single failed scrape is noise, two minutes of silence is an incident).
+groups:
+  - name: llm-lab
+    rules:
+      # Rule 1 — the answer to failure #5 from day 5: the silent process death.
+      # Every scrape target exports up{...} for free; 0 = scrape failed.
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }}{{ if not $labels.service }}{{ $labels.job }}{{ end }} is not answering scrapes"
+          description: "Target {{ $labels.instance }} has been down for 2 minutes. Runbook: docs/runbook.md#servicedown"
+
+      # Rule 2 — the SLO from the benchmark (docs/slo.md): interactive users
+      # get their first token within 2.5s even at P99. Breach = the knee
+      # (c=16 on the RTX 3090) has been crossed; shed load or scale out.
+      - alert: TTFTP99AboveSLO
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, model_name) (rate(vllm:time_to_first_token_seconds_bucket[5m]))
+          ) > 2.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 time-to-first-token above 2.5s SLO for {{ $labels.model_name }}"
+          description: "Sustained SLO breach — concurrency is past the knee. Runbook: docs/runbook.md#ttft-slo"

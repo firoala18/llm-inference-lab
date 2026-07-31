@@ -1,6 +1,8 @@
-# The gateway stack: LiteLLM proxy + Postgres for virtual keys, budgets, spend.
+# The platform stack: LiteLLM proxy + Postgres (governance) and
+# Prometheus + Grafana (observability).
 # Start:  docker compose up -d      Logs: docker compose logs -f litellm
 # Stop:   docker compose down       (add -v to also wipe the database volume)
+# UIs:    Grafana http://localhost:3000  Prometheus http://localhost:9090
 services:
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
@@ -33,5 +35,34 @@ services:
       retries: 10
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ../monitoring/targets:/etc/prometheus/targets:ro   # pod URLs, gitignored (file SD)
+      - promdata:/prometheus                               # metric history survives restarts
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin    # lab-local only
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus                         # plain depends_on: Grafana retries on its own
+    restart: unless-stopped
+
 volumes:
   pgdata: {}
+  promdata: {}
+  grafanadata: {}

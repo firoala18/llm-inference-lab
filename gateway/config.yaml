@@ -32,3 +32,5 @@ general_settings:
 litellm_settings:
   drop_params: true                          # silently drop params vLLM doesn't support
                                              # instead of failing the request
+  callbacks: ["prometheus"]                  # expose /metrics for the monitoring stack
+                                             # (request counts, latency, spend per key)

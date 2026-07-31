@@ -1,0 +1,36 @@
+# Prometheus scrape configuration.
+# The concrete pod hostnames live in targets/pod-targets.json (gitignored) —
+# same structure/secret split as config.yaml vs .env one layer up.
+global:
+  scrape_interval: 15s        # pull cadence; also the resolution of every graph
+  evaluation_interval: 15s    # how often alert rules are checked
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # vLLM servers + GPU exporter on the pod, reached via the RunPod HTTPS proxy.
+  # Proxy hostnames are stable across pod restarts (unlike the TCP ports),
+  # but contain the pod id — hence file service discovery from a gitignored dir.
+  - job_name: pod
+    scheme: https
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/*.json
+        refresh_interval: 30s
+
+  # LiteLLM gateway — same compose network, so plain service-name DNS.
+  # LiteLLM guards /metrics with the same auth as the API (vLLM does not —
+  # its api-key only covers /v1/*). Token from a gitignored file, never here.
+  - job_name: litellm
+    metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/targets/litellm-key.txt
+    static_configs:
+      - targets: ["litellm:4000"]
+
+  # Prometheus watching itself (up{job="prometheus"} proves scraping works at all).
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

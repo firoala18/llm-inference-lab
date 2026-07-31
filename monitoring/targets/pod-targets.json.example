@@ -1,0 +1,14 @@
+[
+  {
+    "targets": ["<POD_ID>-8000.proxy.runpod.net"],
+    "labels": { "service": "vllm-8b", "model": "qwen-8b" }
+  },
+  {
+    "targets": ["<POD_ID>-8002.proxy.runpod.net"],
+    "labels": { "service": "vllm-mini", "model": "qwen-mini" }
+  },
+  {
+    "targets": ["<POD_ID>-8888.proxy.runpod.net"],
+    "labels": { "service": "gpu-exporter" }
+  }
+]

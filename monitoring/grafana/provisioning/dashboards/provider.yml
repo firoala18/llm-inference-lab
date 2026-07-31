@@ -1,0 +1,8 @@
+# Auto-load every dashboard JSON mounted under /var/lib/grafana/dashboards.
+apiVersion: 1
+providers:
+  - name: llm-lab
+    folder: ""
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
