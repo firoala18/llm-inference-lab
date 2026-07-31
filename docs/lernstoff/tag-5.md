@@ -69,7 +69,38 @@ darauf: **Monitoring mit Alerting** (P99-Latenz, Fehlerrate, Prozess-/
 Endpoint-Checks) — exakt der Samstags-Block. Alle anderen Fehler melden sich
 selbst beim Start; der lautlose Tod meldet sich nie.
 
-## 6. Übungsfragen
+## 6. Bonus-Thema: Quantisierung (BF16 → FP8 → INT4)
+
+**Was:** Gewichte mit weniger Bits speichern. Qwen3-8B: BF16 = 16,4 GB,
+FP8 = 8,2 GB, INT4 (AWQ) = 4,6 GB. Freiwerdender VRAM wird KV-Cache →
+**~3× mehr parallele Nutzer** mit AWQ auf unserer 3090. Und weil Decoding
+bandbreiten-limitiert ist: weniger Bytes pro Token → auch einzelne
+Anfragen werden schneller.
+
+**Qualitätskosten:** FP8 praktisch verlustfrei (<1 %, wird Serving-Standard).
+INT4/AWQ moderat (~1–3 %), spürbar bei harten Fällen (Mathe, Code, lange
+Reasoning-Ketten, seltene Sprachen). AWQ = activation-aware: schützt die
+wichtigsten Gewichte, rundet den Rest. Große Modelle verkraften es besser
+als kleine.
+
+**Warum nicht immer? Drei Gründe:**
+1. **Eval-Pflicht:** Benchmark-Prozente ≠ eigene Workloads. Nie quantisiert
+   ausrollen ohne Eval auf ECHTEN Aufgaben (Betreiber-Regel).
+2. **Hardware:** Natives FP8-Rechnen erst ab Hopper/Ada (H100, 4090+). Auf
+   Ampere (unsere 3090) bringt AWQ INT4 den Gewinn, FP8 kaum.
+3. **Regime:** Bei Volllast-Batches wird das System rechenlimitiert — dann
+   kostet Ent-Quantisieren Rechenzeit, der Vorteil schrumpft.
+
+**Plattform-Formulierung fürs Gespräch:** *„Gestuftes Angebot: FP8 als
+Standard auf moderner Hardware, INT4 für kostensensitive Dienste und
+Fallbacks, BF16 wo Qualität auditiert wird — und jeder Wechsel geht durch
+ein Eval-Gate mit fachspezifischen Testfällen."*
+
+**Direkte Wirkung aufs Capacity Model:** „Studierende pro GPU" ~×3 (größerer
+KV-Pool → höhere Concurrency-Decke), $/Mio Tokens sinkt entsprechend. Zu
+prüfende Annahme vor dem Umstieg: Antwortqualität auf realen Fach-Workloads.
+
+## 7. Übungsfragen
 
 1. **„Woran erkennen Sie in der API-Antwort, dass ein Fallback griff?"** →
    Am `model`-Feld (tatsächliches Serving-Modell statt Alias) — plus Latenz
