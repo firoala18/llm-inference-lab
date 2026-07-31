@@ -15,7 +15,7 @@ vllm serve Qwen/Qwen3-8B \
   --port 8000 \
   --api-key "$VLLM_API_KEY" \
   --dtype auto \
-  --gpu-memory-utilization 0.95 \
+  --gpu-memory-utilization 0.76 \
   --max-model-len 8128 \
   ${VLLM_EXTRA_ARGS:-} \
   2>&1 | tee /workspace/vllm.log

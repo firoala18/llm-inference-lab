@@ -12,6 +12,20 @@ model_list:
       input_cost_per_token: 0.0000001    # $0.10/M tokens — interner Verrechnungspreis
       output_cost_per_token: 0.00000041  # $0.41/M — aus docs/capacity-model.md (c=8)
 
+  - model_name: qwen-mini                    # fallback: small, fast, always answers
+    litellm_params:
+      model: hosted_vllm/Qwen/Qwen3-0.6B
+      api_base: os.environ/VLLM_API_BASE_SMALL
+      api_key: os.environ/VLLM_API_KEY
+      input_cost_per_token: 0.00000005       # smaller model, cheaper internal rate
+      output_cost_per_token: 0.0000002
+
+router_settings:
+  fallbacks:
+    - qwen-8b: ["qwen-mini"]                 # if 8B fails, retry the request on 0.6B
+  num_retries: 1                             # one retry on the primary before falling back
+  timeout: 45
+
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY  # admin key: mints and revokes virtual keys
 
