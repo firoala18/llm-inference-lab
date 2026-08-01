@@ -1,0 +1,28 @@
+# The GitOps handover: this Application tells ArgoCD to keep the cluster's
+# llm-lab namespace in sync with k8s/ in the GitHub repo. From now on,
+# `git push` deploys — kubectl apply is only used once, for this file
+# (the "bootstrap"). Lives outside k8s/ so it doesn't sync itself.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llm-lab
+  namespace: argocd            # Applications always live in ArgoCD's namespace
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/firoala18/llm-inference-lab.git
+    targetRevision: master
+    path: k8s
+    directory:
+      # The secret template carries the same metadata.name as the real
+      # (gitignored) Secret — syncing it would overwrite real credentials
+      # with placeholders. Real setups use SealedSecrets/ExternalSecrets;
+      # we exclude the template and manage the Secret out-of-band.
+      exclude: "litellm-secret.example.yaml"
+  destination:
+    server: https://kubernetes.default.svc   # this very cluster
+    namespace: llm-lab
+  syncPolicy:
+    automated:
+      prune: true      # deleted in git → deleted in cluster
+      selfHeal: true   # manual cluster edits get reverted to git state
