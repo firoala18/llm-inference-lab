@@ -3,6 +3,7 @@
 *.local.md
 monitoring/targets/*
 !monitoring/targets/pod-targets.json.example
+k8s/litellm-secret.yaml
 __pycache__/
 .venv/
 body.json

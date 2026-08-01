@@ -1,0 +1,40 @@
+# The gateway config as a ConfigMap — the K8s translation of the compose
+# bind-mount `./config.yaml:/app/config.yaml:ro`. Structure lives here (git),
+# secrets stay in the Secret (litellm-secret.yaml, gitignored) and are
+# referenced via os.environ/ indirection — same split, new platform.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: llm-lab
+data:
+  config.yaml: |
+    model_list:
+      - model_name: qwen-8b
+        litellm_params:
+          model: hosted_vllm/Qwen/Qwen3-8B
+          api_base: os.environ/VLLM_API_BASE
+          api_key: os.environ/VLLM_API_KEY
+          input_cost_per_token: 0.0000001
+          output_cost_per_token: 0.00000041
+
+      - model_name: qwen-mini
+        litellm_params:
+          model: hosted_vllm/Qwen/Qwen3-0.6B
+          api_base: os.environ/VLLM_API_BASE_SMALL
+          api_key: os.environ/VLLM_API_KEY
+          input_cost_per_token: 0.00000005
+          output_cost_per_token: 0.0000002
+
+    router_settings:
+      fallbacks:
+        - qwen-8b: ["qwen-mini"]
+      num_retries: 1
+      timeout: 45
+
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+
+    litellm_settings:
+      drop_params: true
+      callbacks: ["prometheus"]

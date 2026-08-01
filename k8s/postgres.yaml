@@ -1,0 +1,74 @@
+# Postgres for LiteLLM's virtual keys, budgets and spend — the K8s
+# translation of the compose `db` service.
+#
+# compose concept      → K8s concept
+# ---------------------------------------------------------
+# named volume pgdata  → PersistentVolumeClaim (PVC)
+# healthcheck          → readinessProbe (gates traffic, not start order)
+# service name "db"    → Service "db" (cluster DNS: db.llm-lab.svc)
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgdata
+  namespace: llm-lab
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi          # k3d's local-path provisioner backs this on the node
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: llm-lab
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # RWO volume: kill the old pod before starting the new one
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: litellm
+            - name: POSTGRES_PASSWORD
+              value: litellm          # lab-local only; in production this comes from a Secret
+            - name: POSTGRES_DB
+              value: litellm
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+          readinessProbe:             # traffic only after the DB actually answers —
+            exec:                     # the day-5 lesson (booting = dead) as a first-class API
+              command: ["pg_isready", "-U", "litellm"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: pgdata
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db                  # THIS is why DATABASE_URL can say @db:5432 — service
+  namespace: llm-lab        # discovery via cluster DNS, same idea as compose networks
+spec:
+  selector:
+    app: db
+  ports:
+    - port: 5432
+      targetPort: 5432

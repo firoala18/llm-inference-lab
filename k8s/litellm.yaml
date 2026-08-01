@@ -1,0 +1,71 @@
+# The gateway itself — K8s translation of the compose `litellm` service.
+# What compose could not give us and K8s does:
+#   - readiness/liveness probes as first-class API (day-5 lesson: a booting
+#     service is a dead service — here the platform enforces it)
+#   - self-healing: kill the pod, the Deployment controller replaces it
+#     (the tmux/SIGHUP problem, solved structurally)
+#   - declarative rollouts: change the image/config, K8s converges to it
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: llm-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm
+  template:
+    metadata:
+      labels:
+        app: litellm
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-stable
+          args: ["--config", "/app/config.yaml", "--port", "4000"]
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - secretRef:
+                name: litellm-secrets       # replaces compose env_file: .env
+          env:
+            - name: DATABASE_URL            # same string as in compose — the
+              value: postgresql://litellm:litellm@db:5432/litellm  # Service is named db
+            - name: STORE_MODEL_IN_DB
+              value: "True"
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml   # replaces the compose bind-mount
+              subPath: config.yaml
+              readOnly: true
+          readinessProbe:                   # gate traffic until the app answers —
+            httpGet:                        # replaces `depends_on: service_healthy`
+              path: /health/liveliness      # (K8s has no start ordering; pods that
+              port: 4000                    # need the DB simply stay not-ready and
+            initialDelaySeconds: 10         # restart until it appears)
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:                    # if the process hangs, kill + restart it
+            httpGet:
+              path: /health/liveliness
+              port: 4000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+      volumes:
+        - name: config
+          configMap:
+            name: litellm-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: llm-lab
+spec:
+  selector:
+    app: litellm
+  ports:
+    - port: 4000
+      targetPort: 4000

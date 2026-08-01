@@ -1,0 +1,7 @@
+# A namespace groups all resources of one application/team — the K8s
+# equivalent of an OpenShift "Project". Everything in this directory
+# deploys into llm-lab.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm-lab
