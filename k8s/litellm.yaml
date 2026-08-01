@@ -12,7 +12,7 @@ metadata:
   name: litellm
   namespace: llm-lab
 spec:
-  replicas: 1
+  replicas: 2      # scaled via git commit — the GitOps proof: no kubectl involved
   selector:
     matchLabels:
       app: litellm
