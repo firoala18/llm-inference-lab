@@ -101,21 +101,39 @@ Die Regeln daraus:
    (config.yaml/.env, prometheus.yml/pod-targets.json,
    authorization/credentials_file, ConfigMap/Secret).
 
-## 7. Übungsfragen (mit Kurzantworten)
+## 7. Übungsfragen (mit Antworten)
 
 1. **„Kubernetes hat kein depends_on — wie startet dann eine App vor
    ihrer Datenbank nicht?"** → Tut sie ruhig: Sie crasht/bleibt
    not-ready und wird neu gestartet, bis die DB antwortet. Readiness
    gated den Traffic. Konvergenz statt Startreihenfolge.
-2. **„Woran hängt ein Service an seinen Pods?"** → Ausschließlich am
-   Label-Selector. Tippfehler = Service ohne Endpoints, stiller Defekt.
-3. **„Warum `strategy: Recreate` für die DB?"** → RWO-Volume: nur ein
-   Pod darf es mounten. RollingUpdate würde alt+neu parallel starten →
-   Deadlock/Korruption.
-4. **„Jemand skaliert von Hand auf 5 Replikas — was passiert?"** →
-   `selfHeal: true`: ArgoCD dreht auf den Git-Stand (2) zurück. Wer
-   skalieren will, committet.
-5. **„Ein Secret lag im öffentlichen Repo, Sie haben es gelöscht und
+2. **„`app: litellm` steht dreimal in litellm.yaml — welche Stelle tut
+   was?"** → Deployment-`selector.matchLabels` **zählt** („davon halte
+   ich replicas Stück am Leben"), `template.metadata.labels`
+   **etikettiert** (Stempel auf jedem erzeugten Pod), Service-`selector`
+   **routet** (dorthin fließt Traffic). Tippfehler im Service-Selector =
+   **stiller Defekt**: DNS löst auf, aber null Endpoints, Clients laufen
+   in Timeouts (`kubectl get endpoints` → leer). Tippfehler zwischen
+   Deployment-Selector und Template-Labels = **laut**: Apply wird
+   abgelehnt.
+3. **„Verfolgen Sie VLLM_API_KEY bis zur Nutzung."** → Deployment:
+   `envFrom → secretRef: litellm-secrets` (lädt alle Secret-Schlüssel
+   als Env) → Secret `litellm-secrets` (gitignored, .example committed):
+   `stringData.VLLM_API_KEY` = echter Wert → Container-Env → ConfigMap:
+   `api_key: os.environ/VLLM_API_KEY` liest zur Laufzeit. Struktur
+   öffentlich, Wert privat — der echte Schlüssel berührt Git nie.
+4. **„Warum `strategy: Recreate` für die DB?"** → PVC ist
+   ReadWriteOnce: nur ein Pod darf schreibend mounten. RollingUpdate
+   startet neu NEBEN alt → Multi-Attach-Hänger oder (lokal) zwei
+   Postgres-Prozesse auf denselben Dateien → Korruption. Recreate: erst
+   töten, dann starten — kurzer Ausfall als bewusster Preis; echte HA
+   macht Replikation, nicht Update-Strategie.
+5. **„Jemand skaliert von Hand auf 5 Replikas — was passiert?"** →
+   Kurz existieren 5 Pods, dann stellt ArgoCD Drift fest (Git: 2 ≠
+   Cluster: 5) und **`selfHeal: true`** dreht auf den Git-Stand zurück.
+   Die Hand-Änderung verliert immer — wer skalieren will, committet.
+   Genau dadurch bleibt der Cluster-Zustand auditierbar: ein Eingang.
+6. **„Ein Secret lag im öffentlichen Repo, Sie haben es gelöscht und
    die Historie bereinigt — fertig?"** → Nein. Rotation ist Pflicht:
    Bots scrapen öffentliche Repos in Minuten, GitHub cacht alte SHAs,
    alte Klone existieren. Bereinigung verhindert künftiges Finden,
